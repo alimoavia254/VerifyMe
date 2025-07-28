@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerifyMe - Certificate Verification Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1.5s linear infinite;
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .dropzone {
+            transition: all 0.3s ease;
+        }
+        .dropzone.active {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        .verification-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            backdrop-filter: blur(5px); /* Blur effect */
+            -webkit-backdrop-filter: blur(5px); /* Safari support */
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 700px;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-900 to-blue-700 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-certificate text-2xl text-blue-300"></i>
+                        <h1 class="text-2xl font-bold">VerifyMe</h1>
+                    </div>
+                    <nav>
+                        <ul class="flex space-x-6">
+                            <li><a href="#" class="hover:text-blue-200 transition">Home</a></li>
+                            <li><a href="#" class="hover:text-blue-200 transition">About</a></li>
+                            <li><a href="#" class="hover:text-blue-200 transition">API</a></li>
+                            <li><a href="#" class="hover:text-blue-200 transition">Contact</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <!-- Upload Section -->
+            <section class="mb-16" id="upload">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-4">Certificate Verification Platform</h2>
+                    <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                        Forensic-grade document validation with six-layer verification process for maximum security
+                    </p>
+                </div>
+
+                <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-2">
+                    <div id="dropzone" class="dropzone border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer transition-all">
+                        <div class="space-y-4">
+                            <div class="inline-block p-4 bg-blue-100 rounded-full">
+                                <i class="fas fa-cloud-upload-alt text-blue-600 text-3xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold">Upload Certificate</h3>
+                            <p class="text-gray-500">Drag & drop your PDF certificate here or click to browse</p>
+                            <input type="file" id="fileInput" class="hidden" accept=".pdf">
+                            <button id="uploadBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition">
+                                Select File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Verification Progress -->
+            <section class="mb-16 hidden" id="verification-progress">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
+                        Verification Progress
+                    </h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <!-- Progress Ring -->
+                        <div class="flex-shrink-0 flex flex-col items-center">
+                            <div class="relative w-40 h-40 mb-4">
+                                <svg class="w-full h-full" viewBox="0 0 100 100">
+                                    <circle class="text-gray-200" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                                    <circle id="progress-ring" class="text-blue-600 progress-ring__circle" stroke-width="8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span id="progress-percent" class="text-2xl font-bold">0%</span>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm text-gray-500">Confidence Score</p>
+                                <p id="confidence-score" class="text-xl font-semibold">0/100</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Steps -->
+                        <div class="flex-grow">
+                            <div class="space-y-6" id="progress-steps-container">
+                                <!-- Verification Steps will be added here by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Dashboard -->
+            <section class="hidden" id="results-dashboard">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
+                        Verification Results
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="results-container">
+                        <!-- Verification cards will be added here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Final Report -->
+            <section class="hidden" id="final-report">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden p-6">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <span class="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
+                        Verification Report
+                    </h2>
+                    
+                    <div class="flex flex-col lg:flex-row gap-8">
+                        <!-- Report Summary -->
+                        <div class="lg:w-2/3 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-500">Document Name</p>
+                                    <p id="doc-name" class="font-medium">certificate_sample.pdf</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-500">Verification Date</p>
+                                    <p id="verif-date" class="font-medium">July 15, 2023, 14:30 UTC</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-500">Session ID</p>
+                                    <p id="session-id" class="font-medium">VM-2023-7X8P9Q2R</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-500">Overall Status</p>
+                                    <p id="overall-status" class="font-medium flex items-center">
+                                        <span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                                        Verified
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-3">Verification Summary</h3>
+                                <p id="summary-text" class="text-gray-700">
+                                    This certificate has undergone forensic-grade verification with an overall confidence score of 87%. 
+                                    The digital signature and document hash were validated successfully. Minor warnings were detected 
+                                    during metadata inspection that do not affect the document's validity.
+                                </p>
+                            </div>
+
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-semibold mb-3">Individual Verification Results</h3>
+                                <ul id="individual-results-list" class="space-y-2">
+                                    <!-- Individual results will be populated here by JavaScript -->
+                                </ul>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-3">
+                                <button id="downloadReportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition flex items-center">
+                                    <i class="fas fa-download mr-2"></i> Download Full Report
+                                </button>
+                                <button class="border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-6 rounded-lg transition flex items-center">
+                                    <i class="fas fa-share-alt mr-2"></i> Share Results
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- QR Code -->
+                        <div class="lg:w-1/3 flex flex-col items-center">
+                            <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex flex-col items-center">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://example.com/verify/VM-2023-7X8P9Q2R" alt="QR code linking to verification results page" class="w-48 mb-3">
+                                <p class="text-sm text-gray-600 text-center">Scan to view verification results online</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-lg font-bold mb-2" id="final-score">87%</p>
+                                <p class="text-sm text-gray-600">Confidence Score</p>
+                                <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div class="h-full bg-blue-600 rounded-full" style="width: 87%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-6 md:mb-0">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-certificate text-2xl text-blue-300 mr-2"></i>
+                            <h3 class="text-xl font-bold">VerifyMe</h3>
+                        </div>
+                        <p class="text-gray-400">Forensic-grade document verification</p>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+                        <div>
+                            <h4 class="font-semibold mb-3">Product</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Features</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Pricing</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">API</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-3">Resources</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Documentation</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Support</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Blog</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-3">Company</h4>
+                            <ul class="space-y-2">
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">About</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Careers</a></li>
+                                <li><a href="#" class="text-gray-400 hover:text-white transition">Privacy</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                    <p>© 2023 VerifyMe. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Feature Details Modal -->
+    <div id="featureDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modal-feature-name" class="text-2xl font-bold mb-4">Feature Name</h3>
+            <p id="modal-feature-description" class="text-gray-700 mb-4"></p>
+            <div id="modal-feature-details" class="space-y-3 text-gray-800">
+                <!-- Details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const verificationProgress = document.getElementById('verification-progress');
+            const resultsDashboard = document.getElementById('results-dashboard');
+            const finalReport = document.getElementById('final-report');
+            const downloadReportBtn = document.getElementById('downloadReportBtn');
+            const individualResultsList = document.getElementById('individual-results-list');
+            
+            // Modal elements
+            const featureDetailsModal = document.getElementById('featureDetailsModal');
+            const closeModalButton = document.querySelector('.close-button');
+            const modalFeatureName = document.getElementById('modal-feature-name');
+            const modalFeatureDescription = document.getElementById('modal-feature-description');
+            const modalFeatureDetails = document.getElementById('modal-feature-details');
+
+            // Simulated verification steps
+            const verificationSteps = [
+                {
+                    id: 'digital-signature',
+                    name: 'Digital Signature Validation',
+                    description: 'Verifies cryptographic signature against authorized issuer certificates',
+                    icon: 'fas fa-signature',
+                    time: '3-5 seconds',
+                    details: {
+                        'Signature Status': 'Valid and Trusted',
+                        'Issuer': 'GlobalSign CA for Adobe',
+                        'Timestamp': '2023-07-15T14:28:00Z',
+                        'Algorithm': 'RSA-SHA256',
+                        'Certificate Chain': 'Complete and Valid',
+                        'Revocation Status': 'Not Revoked (OCSP Check)'
+                    }
+                },
+                {
+                    id: 'metadata',
+                    name: 'Metadata Inspection',
+                    description: 'Analyzes document metadata for inconsistencies or tampering',
+                    icon: 'fas fa-code',
+                    time: '2-4 seconds',
+                    details: {
+                        'Creation Date': '2023-07-15T14:00:00Z',
+                        'Modification Date': '2023-07-15T14:00:00Z',
+                        'Author': 'University of Example',
+                        'Producer': 'iText 7.1.15',
+                        'Custom Fields': 'None detected',
+                        'Embedded Objects': 'No suspicious objects'
+                    }
+                },
+                {
+                    id: 'visual',
+                    name: 'Visual Template Analysis',
+                    description: 'Compares document against official templates for anomalies',
+                    icon: 'fas fa-image',
+                    time: '4-7 seconds',
+                    details: {
+                        'Template Match': 'High Confidence (98%)',
+                        'Font Consistency': 'Consistent with template',
+                        'Layout Integrity': 'No unexpected shifts or overlaps',
+                        'Image Analysis': 'All images appear authentic',
+                        'Watermark Presence': 'Detected and Valid'
+                    }
+                },
+                {
+                    id: 'ocr',
+                    name: 'OCR + Field Matching',
+                    description: 'Validates text content matches expected values for each field',
+                    icon: 'fas fa-font',
+                    time: '5-8 seconds',
+                    details: {
+                        'OCR Accuracy': '99.5%',
+                        'Name Field': 'Matched "John Doe"',
+                        'Course Field': 'Matched "Computer Science"',
+                        'Grade Field': 'Matched "A+"',
+                        'Date of Issue': 'Matched "July 10, 2023"',
+                        'Discrepancies': 'None found'
+                    }
+                },
+                {
+                    id: 'hash',
+                    name: 'Certificate Hash Lookup',
+                    description: 'Checks document fingerprint against known valid certificates',
+                    icon: 'fas fa-fingerprint',
+                    time: '3-6 seconds',
+                    details: {
+                        'Document Hash (SHA256)': 'a1b2c3d4e5f67890...',
+                        'Database Match': 'Found in trusted registry',
+                        'Previous Verifications': '5 successful matches',
+                        'Blacklist Check': 'Not found on blacklist'
+                    }
+                },
+                {
+                    id: 'online',
+                    name: 'Online Certificate ID Lookup',
+                    description: 'Verifies against issuer database for revocation status',
+                    icon: 'fas fa-globe',
+                    time: '2-5 seconds',
+                    details: {
+                        'Issuer Database': 'University of Example Registry',
+                        'Certificate ID': 'CERT-2023-JD-001',
+                        'Status in Registry': 'Active',
+                        'Revocation List Check': 'Not on CRL',
+                        'OCSP Response': 'Good'
+                    }
+                }
+            ];
+
+            // Confidence scores and statuses for demo purposes
+            const confidenceScores = [19, 15, 17, 18, 20, 16];
+            const statuses = ['pass', 'warning', 'pass', 'pass', 'pass', 'warning'];
+            let currentFilename = ''; // To store the filename for the report
+
+            // Event listeners
+            uploadBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length) {
+                    handleFileUpload(e.target.files[0]);
+                }
+            });
+            
+            // Drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropzone.classList.add('active');
+            }
+            
+            function unhighlight() {
+                dropzone.classList.remove('active');
+            }
+            
+            dropzone.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                handleFileUpload(file);
+            });
+            
+            function handleFileUpload(file) {
+                if (file.type !== 'application/pdf') {
+                    alert('Please upload a PDF file');
+                    return;
+                }
+                
+                currentFilename = file.name; // Store filename
+                
+                // Show uploading state
+                dropzone.innerHTML = `
+                    <div class="flex flex-col items-center justify-center space-y-4 p-6">
+                        <div class="spinner">
+                            <i class="fas fa-circle-notch text-blue-600 text-4xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold">Analyzing Document</h3>
+                        <p class="text-gray-600">${file.name}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="upload-progress" class="bg-blue-600 h-2.5 rounded-full w-0"></div>
+                        </div>
+                    </div>
+                `;
+                
+                // Simulate upload and processing
+                updateProgressBar('upload-progress', 100, 2000, function() {
+                    startVerificationProcess(file.name);
+                });
+            }
+            
+            function updateProgressBar(id, target, duration, callback) {
+                const progressBar = document.getElementById(id);
+                const startTime = performance.now();
+                
+                function updateProgress(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    progressBar.style.width = `${progress * target}%`;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(updateProgress);
+                    } else if (callback) {
+                        callback();
+                    }
+                }
+                
+                requestAnimationFrame(updateProgress);
+            }
+            
+            function startVerificationProcess(filename) {
+                dropzone.classList.add('hidden');
+                verificationProgress.classList.remove('hidden');
+                
+                // Setup progress tracker
+                const progressStepsContainer = document.getElementById('progress-steps-container');
+                progressStepsContainer.innerHTML = '';
+                
+                verificationSteps.forEach((step, index) => {
+                    const stepElement = document.createElement('div');
+                    stepElement.className = 'bg-gray-50 p-4 rounded-lg';
+                    stepElement.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div id="${step.id}-icon" class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="${step.icon} text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium">${step.name}</h4>
+                                    <p class="text-sm text-gray-500">${step.description}</p>
+                                </div>
+                            </div>
+                            <div id="${step.id}-status" class="text-sm text-gray-500">Pending</div>
+                        </div>
+                        <div class="mt-3 hidden" id="${step.id}-details">
+                            <div class="flex items-center justify-between text-sm">
+                                <span>Estimated time: ${step.time}</span>
+                                <span id="${step.id}-score" class="font-medium"></span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                <div id="${step.id}-progress" class="bg-blue-100 h-1.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    `;
+                    progressStepsContainer.appendChild(stepElement);
+                    
+                    // Show details after short delay
+                    setTimeout(() => {
+                        document.getElementById(`${step.id}-details`).classList.remove('hidden');
+                    }, index * 200);
+                });
+                
+                // Animate verification process
+                let totalProgress = 0;
+                const progressRing = document.getElementById('progress-ring');
+                const circumference = 2 * Math.PI * 40;
+                progressRing.style.strokeDasharray = circumference;
+                progressRing.style.strokeDashoffset = circumference;
+                
+                verificationSteps.forEach((step, index) => {
+                    const delay = 1000 + (index * 1500);
+                    
+                    setTimeout(() => {
+                        // Update step status
+                        const statusElement = document.getElementById(`${step.id}-status`);
+                        statusElement.classList.remove('text-gray-500');
+                        
+                        if (statuses[index] === 'pass') {
+                            statusElement.classList.add('text-green-500');
+                            statusElement.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Valid';
+                        } else if (statuses[index] === 'warning') {
+                            statusElement.classList.add('text-yellow-500');
+                            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Warning';
+                        } else {
+                            statusElement.classList.add('text-red-500');
+                            statusElement.innerHTML = '<i class="fas fa-times-circle mr-1"></i> Invalid';
+                        }
+                        
+                        // Animate progress bar
+                        updateProgressBar(`${step.id}-progress`, 100, 1000);
+                        
+                        // Set confidence score
+                        document.getElementById(`${step.id}-score`).textContent = `${confidenceScores[index]}/20`;
+                        
+                        // Update overall progress
+                        totalProgress += confidenceScores[index] / 20 * (100 / verificationSteps.length);
+                        const progressPercent = Math.round(totalProgress);
+                        const progressOffset = circumference - (progressPercent / 100) * circumference;
+                        
+                        progressRing.style.strokeDashoffset = progressOffset;
+                        document.getElementById('progress-percent').textContent = `${progressPercent}%`;
+                        document.getElementById('confidence-score').textContent = `${progressPercent}/100`;
+                        
+                        // If last step, show results
+                        if (index === verificationSteps.length - 1) {
+                            setTimeout(() => {
+                                showResultsDashboard(filename);
+                            }, 1500);
+                        }
+                    }, delay);
+                });
+            }
+            
+            function showResultsDashboard(filename) {
+                resultsDashboard.classList.remove('hidden');
+                const resultsContainer = document.getElementById('results-container');
+                resultsContainer.innerHTML = '';
+                
+                verificationSteps.forEach((step, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'verification-card bg-white border border-gray-200 rounded-lg p-5 shadow-sm transition-all cursor-pointer'; // Added cursor-pointer
+                    card.dataset.stepIndex = index; // Store the index for later retrieval
+
+                    let statusClass, statusText, statusIcon;
+                    if (statuses[index] === 'pass') {
+                        statusClass = 'bg-green-100 text-green-800';
+                        statusText = 'Valid';
+                        statusIcon = '<i class="fas fa-check-circle text-green-500 mr-1"></i>';
+                    } else if (statuses[index] === 'warning') {
+                        statusClass = 'bg-yellow-100 text-yellow-800';
+                        statusText = 'Warning';
+                        statusIcon = '<i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>';
+                    } else {
+                        statusClass = 'bg-red-100 text-red-800';
+                        statusText = 'Invalid';
+                        statusIcon = '<i class="fas fa-times-circle text-red-500 mr-1"></i>';
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="flex items-start space-x-4 mb-4">
+                            <div class="flex-shrink-0 p-2 rounded-lg bg-blue-50 text-blue-600">
+                                <i class="${step.icon}"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg">${step.name}</h3>
+                                <p class="text-sm text-gray-600">${step.description}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs px-2 py-1 rounded-full ${statusClass}">
+                                ${statusIcon}${statusText}
+                            </span>
+                            <span class="font-medium">${confidenceScores[index]}/20</span>
+                        </div>
+                    `;
+                    
+                    resultsContainer.appendChild(card);
+
+                    // Add click listener to the card
+                    card.addEventListener('click', function() {
+                        const clickedIndex = parseInt(this.dataset.stepIndex);
+                        showFeatureDetails(verificationSteps[clickedIndex], statuses[clickedIndex], confidenceScores[clickedIndex]);
+                    });
+                });
+                
+                setTimeout(() => {
+                    finalReport.classList.remove('hidden');
+                    populateFinalReport(filename);
+                    // Scroll to results
+                    resultsDashboard.scrollIntoView({ behavior: 'smooth' });
+                }, 1000);
+            }
+
+            function showFeatureDetails(feature, status, score) {
+                modalFeatureName.textContent = feature.name;
+                modalFeatureDescription.textContent = feature.description;
+                modalFeatureDetails.innerHTML = ''; // Clear previous details
+
+                // Add status and score to modal details
+                let statusColorClass = '';
+                let statusText = '';
+                if (status === 'pass') {
+                    statusColorClass = 'text-green-600';
+                    statusText = 'Valid';
+                } else if (status === 'warning') {
+                    statusColorClass = 'text-yellow-600';
+                    statusText = 'Warning';
+                } else {
+                    statusColorClass = 'text-red-600';
+                    statusText = 'Invalid';
+                }
+
+                modalFeatureDetails.innerHTML += `
+                    <p class="font-semibold">Status: <span class="${statusColorClass}">${statusText}</span></p>
+                    <p class="font-semibold">Confidence Score: ${score}/20</p>
+                    <hr class="my-3 border-gray-200">
+                    <p class="font-semibold mb-2">Collected Data:</p>
+                `;
+
+                // Populate specific details for the feature
+                if (feature.details) {
+                    for (const key in feature.details) {
+                        const detailItem = document.createElement('p');
+                        detailItem.innerHTML = `<span class="font-medium">${key}:</span> ${feature.details[key]}`;
+                        modalFeatureDetails.appendChild(detailItem);
+                    }
+                } else {
+                    modalFeatureDetails.innerHTML += '<p>No specific data collected for this feature in the simulation.</p>';
+                }
+
+                featureDetailsModal.style.display = 'flex'; // Use flex to center
+            }
+
+            // Close modal when close button is clicked
+            closeModalButton.addEventListener('click', function() {
+                featureDetailsModal.style.display = 'none';
+            });
+
+            // Close modal when clicking outside of the modal content
+            window.addEventListener('click', function(event) {
+                if (event.target == featureDetailsModal) {
+                    featureDetailsModal.style.display = 'none';
+                }
+            });
+
+            function populateFinalReport(filename) {
+                // Set report details
+                document.getElementById('doc-name').textContent = filename;
+                const verificationDate = new Date();
+                document.getElementById('verif-date').textContent = verificationDate.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZoneName: 'short'
+                });
+                const sessionId = 'VM-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                document.getElementById('session-id').textContent = sessionId;
+                
+                // Calculate overall status and confidence
+                let totalConfidence = 0;
+                let hasWarning = false;
+                let hasInvalid = false;
+
+                verificationSteps.forEach((step, index) => {
+                    totalConfidence += confidenceScores[index];
+                    if (statuses[index] === 'warning') {
+                        hasWarning = true;
+                    } else if (statuses[index] === 'invalid') {
+                        hasInvalid = true;
+                    }
+                });
+
+                const overallConfidencePercent = Math.round((totalConfidence / (verificationSteps.length * 20)) * 100);
+                document.getElementById('final-score').textContent = `${overallConfidencePercent}%`;
+                document.querySelector('#final-report .h-full.bg-blue-600').style.width = `${overallConfidencePercent}%`;
+
+                const overallStatusElement = document.getElementById('overall-status');
+                const overallStatusSpan = overallStatusElement.querySelector('span');
+                if (hasInvalid) {
+                    overallStatusSpan.className = 'inline-block w-3 h-3 rounded-full bg-red-500 mr-2';
+                    overallStatusElement.innerHTML = `<span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span> Invalid`;
+                    document.getElementById('summary-text').textContent = `This certificate has failed one or more critical verification checks, resulting in an overall status of Invalid. Please review the individual results for details.`;
+                } else if (hasWarning) {
+                    overallStatusSpan.className = 'inline-block w-3 h-3 rounded-full bg-yellow-500 mr-2';
+                    overallStatusElement.innerHTML = `<span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-2"></span> Verified with Warnings`;
+                    document.getElementById('summary-text').textContent = `This certificate has undergone forensic-grade verification with an overall confidence score of ${overallConfidencePercent}%. Minor warnings were detected during the process, but the document's core validity is maintained.`;
+                } else {
+                    overallStatusSpan.className = 'inline-block w-3 h-3 rounded-full bg-green-500 mr-2';
+                    overallStatusElement.innerHTML = `<span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span> Verified`;
+                    document.getElementById('summary-text').textContent = `This certificate has undergone forensic-grade verification with an overall confidence score of ${overallConfidencePercent}%. All checks passed successfully, confirming the document's authenticity and integrity.`;
+                }
+
+                // Populate individual results in the final report
+                individualResultsList.innerHTML = '';
+                verificationSteps.forEach((step, index) => {
+                    let statusText, statusColor;
+                    if (statuses[index] === 'pass') {
+                        statusText = 'Valid';
+                        statusColor = 'text-green-600';
+                    } else if (statuses[index] === 'warning') {
+                        statusText = 'Warning';
+                        statusColor = 'text-yellow-600';
+                    } else {
+                        statusText = 'Invalid';
+                        statusColor = 'text-red-600';
+                    }
+                    const listItem = document.createElement('li');
+                    listItem.className = 'flex justify-between items-center';
+                    listItem.innerHTML = `
+                        <span class="text-gray-700">${step.name}</span>
+                        <span class="font-medium ${statusColor}">${statusText} (${confidenceScores[index]}/20)</span>
+                    `;
+                    individualResultsList.appendChild(listItem);
+                });
+
+                // Update QR code with dynamic session ID (simulated)
+                const qrCodeImg = document.querySelector('#final-report img');
+                qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://example.com/verify/${sessionId}`;
+            }
+
+            // Download Report Button Click
+            downloadReportBtn.addEventListener('click', function() {
+                generateAndDownloadReport();
+            });
+
+            function generateAndDownloadReport() {
+                const docName = document.getElementById('doc-name').textContent;
+                const verifDate = document.getElementById('verif-date').textContent;
+                const sessionId = document.getElementById('session-id').textContent;
+                const overallStatus = document.getElementById('overall-status').textContent.trim();
+                const summaryText = document.getElementById('summary-text').textContent.trim();
+                const finalScore = document.getElementById('final-score').textContent;
+
+                let reportContent = `
+VerifyMe Certificate Verification Report
+
+Document Name: ${docName}
+Verification Date: ${verifDate}
+Session ID: ${sessionId}
+Overall Status: ${overallStatus}
+Confidence Score: ${finalScore}
+
+Verification Summary:
+${summaryText}
+
+Individual Verification Results:
+`;
+                verificationSteps.forEach((step, index) => {
+                    let statusText;
+                    if (statuses[index] === 'pass') {
+                        statusText = 'Valid';
+                    } else if (statuses[index] === 'warning') {
+                        statusText = 'Warning';
+                    } else {
+                        statusText = 'Invalid';
+                    }
+                    reportContent += `- ${step.name}: ${statusText} (${confidenceScores[index]}/20)\n`;
+                    if (verificationSteps[index].details) {
+                        for (const key in verificationSteps[index].details) {
+                            reportContent += `    - ${key}: ${verificationSteps[index].details[key]}\n`;
+                        }
+                    }
+                });
+
+                reportContent += `
+---
+This report was generated by VerifyMe.
+For online verification, scan the QR code on the report page or visit: https://example.com/verify/${sessionId}
+`;
+
+                // Simulate PDF download by creating a text file with .pdf extension
+                const blob = new Blob([reportContent], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `VerifyMe_Report_${docName.replace(/\.pdf$/, '')}_${sessionId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+    </script>
+</body>
+</html>
